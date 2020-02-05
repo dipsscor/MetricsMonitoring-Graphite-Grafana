@@ -1,0 +1,60 @@
+version: '3.3'
+
+
+services:
+  app:
+    build: .
+    ports:
+      - "8088:8088"
+    restart: unless-stopped
+    environment:
+    - GRAPHITE_HOST=graphite
+    - GRAPHITE_PORT=80
+    networks:
+      - metrics-monitor 
+    links:
+      - graphite
+
+
+  graphite:
+    image: graphiteapp/docker-graphite-statsd
+    container_name: graphite
+    ports:
+      - 80:80
+      - 2003:2003
+      - 2004:2004
+      - 2023:2023
+      - 2024:2024
+      - 8125:8125/udp
+      - 8126:8126
+    restart: unless-stopped    
+    networks:
+      - metrics-monitor
+
+      
+         
+      
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - ./env/grafana_conf/provisioning:/etc/grafana/provisioning
+      - ./env/grafana_conf/custom_dashboards:/var/lib/grafana/dashboards
+    ports:
+      - 3000:3000
+    restart: unless-stopped    
+    networks:
+      - metrics-monitor  
+    env_file:
+      - ./env/grafana_conf/grafana.env
+    links:
+      - graphite
+      
+
+
+    
+networks:
+  metrics-monitor:
+    driver: bridge   
+
+

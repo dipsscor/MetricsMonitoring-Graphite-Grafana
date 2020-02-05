@@ -1,0 +1,6 @@
+- name: 'Custom Dashboard'
+  org_id: 1
+  folder: 'Spring-boot-apps'
+  type: 'file'
+  options:
+    folder: '/var/lib/grafana/dashboards'
