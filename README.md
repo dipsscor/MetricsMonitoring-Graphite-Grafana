@@ -1,6 +1,6 @@
 # Metrics Monitoring Application using Prometheus and Grafana
 
-Sample Springboot Application demonstrating metrics collection and monitoring using Prometheus and Grafana
+Sample Springboot Application demonstrating metrics collection and monitoring using Graphite and Grafana
 
 License : [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -50,7 +50,7 @@ The metrics are exposed to http://localhost:8088/actuator/prometheus
 		</dependency>
 		<dependency>
 			<groupId>io.micrometer</groupId>
-			<artifactId>micrometer-registry-prometheus</artifactId>
+			<artifactId>micrometer-registry-graphite</artifactId>
 		</dependency>	
 
 
@@ -59,168 +59,66 @@ Application is accessible at:
 	http://localhost:8088/hello
 
 
-## Prometheus Configuration
-Prometheus is being provisned with Docker-Compose using the latest Prometheus image.
+## Graphite:
+Graphite is a graphing library responsible for storing and rendering visual representations of data. This means that Graphite requires other applications to collect and transfer the data points.
+
+### The Graphite Web App:
+
+    URL: http://localhost:80
+    
+    
+### Carbon
+Carbon is the storage backend for a Graphite configuration. A single Graphite configuration will have one or more Carbon daemons that are responsible for handling data that is sent over by other processes that collect and transmit statistics (the collectors are not part of Graphite).
+
+### StatsD
+StatsD is a very simple daemon that can be used to send other data to Graphite. The benefit of this approach is that it becomes trivial to build in stat tracking to applications and systems that you are creating.
+
+### Collectd
+Collectd can gather statistics about many different components of a server environment. It allows you to easily track common metrics like memory usage, CPU load, network traffic etc. This allows you to easily correlate events with the state of your systems.
 
 
-      prometheus:
-        image: prom/prometheus
-        container_name: prometheus
-        volumes:
-          - ./env/prometheus_conf/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-          - ./env/prometheus_conf/alert.rules:/etc/prometheus/alert.rules
+
+
+Graphite is being provisned with Docker-Compose using the latest Graphite-Statsd image.
+
+
+    graphite:
+        image: graphiteapp/docker-graphite-statsd
+        container_name: graphite
         ports:
-          - 9090:9090
+          - 80:80
+          - 2003:2003
+          - 2004:2004
+          - 2023:2023
+          - 2024:2024
+          - 8125:8125/udp
+          - 8126:8126
         restart: unless-stopped    
         networks:
           - metrics-monitor
-        depends_on:
-          - cadvisor
-          - node-exporter
-	      
-Prometheus confugurations are overwritten with prometheus.yml file located at : ./env/prometheus_conf/prometheus.yml. This goes into the docker container location - /etc/prometheus/prometheus.yml
+          
+          
+### Mapped Ports	
 
-
-In "prometheus.yml" file:
+    Host	Container	Service
+    80	80	nginx => used for springboot app to send data to graphite and grafana to query data
+    2003	2003	carbon receiver - plaintext
+    2004	2004	carbon receiver - pickle
+    2023	2023	carbon aggregator - plaintext
+    2024	2024	carbon aggregator - pickle
+    8080	8080	Graphite internal gunicorn port (without Nginx proxying).
+    8125	8125	statsd
+    8126	8126	statsd admin
 	
-    -global scrape settings - consists of global scrapes
-    
-    - scrape configs conists of:
-        - Prometheus config
-        - node-exporter config
-        - cadvisor config
-        - alerts configs
-	
- Prometheus will be running at following location on browser:
+ Graphite will be running at following location on browser:
  
- 	http://localhost:9090 
+ 	http://localhost:80
     
     
    ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/prom_targets.png) 
     
     
-## Node exporter config
-The Node Exporter exposes the prometheus metrics of the host machine in which it is running and shows the machine’s file system, networking devices, processor, memory usages and others features as well. Node exporter can be run as a docker container while reporting stats for the host system. We will append configuration setting to the existing docker-compose.yml and prometheus.yml to bring up life to node-exporter.
 
-In docker-compose.yml:
-
-
-    prometheus:
-            ...............
-            ...............
-        depends_on:
-          - ..........
-          - node-exporter
-          
-     node-exporter:
-        image: prom/node-exporter
-        container_name: node-exporter
-        ports:
-        - '9100:9100'
-        restart: unless-stopped  
-        networks:
-          - metrics-monitor  
-
- In prometheus.yml :
-
-       - job_name: 'node-exporter'
-         static_configs:
-          - targets: ['node-exporter:9100']
-          
-          
-
-          
-          
-## cadvisor config
-cAdvisor (short for container Advisor) analyzes and exposes resource usage and performance data from running containers. cAdvisor exposes Prometheus metrics out of the box. 
-
-
-In docker-compose.yml:
-
-
-    prometheus:
-            ...............
-            ...............
-        depends_on:
-          - cadvisor
-          - node-exporter
-          
-      cadvisor:
-        image: google/cadvisor:latest
-        container_name: cadvisor
-        ports:
-          - 8080:8080
-        restart: unless-stopped  
-        networks:
-          - metrics-monitor
-        volumes:
-          - /:/rootfs:ro
-          - /var/run:/var/run:rw
-          - /sys:/sys:ro
-          - /var/lib/docker/:/var/lib/docker:ro
-        depends_on:
-          - app
-
-
-In prometheus.yml:
-
-    ..............
-    ..............
-      - job_name: cadvisor
-        scrape_interval: 5s
-        static_configs:
-          - targets:
-            - cadvisor:8080
-            
-            
-  cadvisor is available on :
-  
-        http://localhost:8080/
-        
-        
-   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/cadvisor.png)      
-        
-            
-## Alert configuration
-To setup notification, we need to configure three files-
--    Alert.rules to define rules on which alert will be fired
--    Map this file with the container in docker-compose.yml
--    Edit Prometheus.yml to add alertmanager as a service.
-
-In ./env/prometheus_conf/alert.rules
-
-    groups:
-    - name: custom-alerts
-      rules:
-
-      # Alert for any instance that is unreachable for >2 minutes.
-      - alert: service_down
-        expr: up == 0
-        for: 2m
-        labels:
-          severity: page
-        annotations:
-          summary: "Instance {{ $labels.instance }} down"
-          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes."
-
-      - alert: high_load
-        expr: node_load1 > 0.5
-        for: 2m
-        labels:
-          severity: page
-        annotations:
-          summary: "Instance {{ $labels.instance }} under high load"
-          description: "{{ $labels.instance }} of job {{ $labels.job }} is under high load."
-          
-          
-In prometheus.yml:          
-          
-    rule_files:
-      - 'alert.rules'
-  
-  
-  
-  ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/prom_alerts.png)
   
   
   
@@ -247,7 +145,7 @@ Grafana is being provisned with Docker-Compose using the latest Grafana image.
  
  In Grafana - datasource.yml under ./env/provisioning/datasources the prometheus container URL is injected as datasource:
  
- 	http://prometheus:9090
+ 	http://graphite:80
 	
 	
  In Grafana - dashboard.yml under ./env/provisioning/dashboards following config is used:
@@ -270,7 +168,8 @@ Grafana is being provisned with Docker-Compose using the latest Grafana image.
  
  # References
  
-    https://linoxide.com/containers/setup-monitoring-docker-containers-prometheus/
-    https://github.com/vegasbrianc/prometheus/blob/master/prometheus/prometheus.yml
-    https://prometheus.io/docs/guides/cadvisor/
+    https://hub.docker.com/r/graphiteapp/docker-graphite-statsd/
+    https://www.digitalocean.com/community/tutorials/an-introduction-to-tracking-statistics-with-graphite-statsd-and-collectd
+    https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/production-ready-metrics.html
+    https://medium.com/@eranda/monitoring-springboot-with-graphite-and-grafana-part-i-71c8dc90b0ab
     
