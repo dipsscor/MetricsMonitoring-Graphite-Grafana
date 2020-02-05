@@ -1,4 +1,4 @@
-# Metrics Monitoring Application using Prometheus and Grafana
+# Metrics Monitoring Application using Graphite and Grafana
 
 Sample Springboot Application demonstrating metrics collection and monitoring using Graphite and Grafana
 
@@ -36,8 +36,8 @@ Micrometer provides a vendor-neutral metrics collection API (rooted in io.microm
 	StatsD (Etsy, dogstatsd, Telegraf, and proprietary formats)
 	Wavefront
 
-### Micrometer and Prometheus dependencies
-The metrics are exposed to http://localhost:8088/actuator/prometheus 
+### Micrometer and Graphite dependencies
+
 
   		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -115,7 +115,7 @@ Graphite is being provisned with Docker-Compose using the latest Graphite-Statsd
  	http://localhost:80
     
     
-   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/prom_targets.png) 
+   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Graphite-Grafana/blob/master/screenshots/graphite.png) 
     
     
 
@@ -161,9 +161,9 @@ Grafana is being provisned with Docker-Compose using the latest Grafana image.
  A custom dashboard is being used and modified from grafana market place for Springboot apps.
  
  
-   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/grafana1.png)
+   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Graphite-Grafana/blob/master/screenshots/grafana_1.png)
    
-   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Prometheus-Grafana/blob/master/screenshots/grafana2.png)
+   ![alt text](https://github.com/dipsscor/MetricsMonitoring-Graphite-Grafana/blob/master/screenshots/grafana_2.png)
  
  
  # References
